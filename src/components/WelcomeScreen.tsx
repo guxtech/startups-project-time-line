@@ -1,247 +1,218 @@
-import React, { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Plus, LayoutDashboard, Trash2, Upload } from 'lucide-react';
-import { format, addWeeks } from 'date-fns';
-import { es } from 'date-fns/locale';
-import { loadProjects, saveProjects } from '../utils/storage';
-import type { Project } from '../types/project';
-import { DeleteProjectModal } from './DeleteProjectModal';
-import { ImportProjectModal } from './ImportProjectModal';
+import React, { useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { LayoutDashboard, LogOut, Plus as PlusIcon, Upload, Settings } from 'lucide-react'
+import { format } from 'date-fns'
+import { es } from 'date-fns/locale'
+import { useAuth } from '../contexts/AuthContext'
+import { useProjects } from '../hooks/useProjects'
 
 export function WelcomeScreen() {
-  const navigate = useNavigate();
-  const [projects, setProjects] = useState(loadProjects().projects);
-  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
-  const [showImportModal, setShowImportModal] = useState(false);
-  const [importedProject, setImportedProject] = useState<Project | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const navigate = useNavigate()
+  const { signOut, user } = useAuth()
+  const { projects, loading, createProject } = useProjects()
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const handleCreateProject = () => {
-    const startDate = new Date();
-    const newProject: Project = {
-      id: crypto.randomUUID(),
-      projectName: "Nuevo Proyecto",
-      totalEstimatedHours: 0,
-      totalConsumedHours: 0,
-      currentPhase: "Planificación",
-      totalTasks: 0,
-      progressStatus: 0,
-      startMonth: format(startDate, 'MMMM yyyy', { locale: es }),
-      monthsToDisplay: 6,
-      currentDate: startDate.toISOString(),
-      tags: [],
-      epics: [{
-        name: "Planificación",
-        startDate: format(startDate, "d 'de' MMMM yyyy", { locale: es }),
-        endDate: format(addWeeks(startDate, 4), "d 'de' MMMM yyyy", { locale: es }),
-        status: "No Iniciada",
-        tagIds: []
-      }]
-    };
+  const handleCreateProject = async () => {
+    const startDate = new Date()
+    const newProject = {
+      project_name: "Nuevo Proyecto",
+      total_estimated_hours: 0,
+      total_consumed_hours: 0,
+      current_phase: "Planificación",
+      total_tasks: 0,
+      progress_status: 0,
+      start_month: format(startDate, 'MMMM yyyy', { locale: es }),
+      months_to_display: 6,
+      project_date: startDate.toISOString(),
+      user_id: user?.id || ''
+    }
 
-    const updatedProjects = [...projects, newProject];
-    setProjects(updatedProjects);
-    saveProjects({ selectedProjectId: newProject.id, projects: updatedProjects });
-    navigate(`/project/${newProject.id}`);
-  };
-
-  const handleImportClick = () => {
-    fileInputRef.current?.click();
-  };
+    try {
+      const createdProject = await createProject(newProject)
+      navigate(`/project/${createdProject.id}`)
+    } catch (err) {
+      console.error('Error al crear proyecto:', err)
+    }
+  }
 
   const handleImportProject = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+    const file = event.target.files?.[0]
+    if (!file) return
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
+    const reader = new FileReader()
+    reader.onload = async (e) => {
       try {
-        const importedData = JSON.parse(e.target?.result as string);
+        const projectData = JSON.parse(e.target?.result as string)
+        const startDate = new Date()
         
-        // Validate required fields
-        if (!importedData.id || !importedData.projectName || !Array.isArray(importedData.epics)) {
-          throw new Error('Formato de archivo de proyecto inválido');
+        const newProject = {
+          ...projectData,
+          project_date: startDate.toISOString(),
+          user_id: user?.id || '',
+          start_month: format(startDate, 'MMMM yyyy', { locale: es }),
         }
 
-        // Create a new project object with all required fields
-        const validatedProject: Project = {
-          ...importedData,
-          tags: Array.isArray(importedData.tags) ? importedData.tags : [],
-          epics: importedData.epics.map((epic: any) => ({
-            name: epic.name,
-            startDate: epic.startDate,
-            endDate: epic.endDate,
-            status: epic.status,
-            tagIds: Array.isArray(epic.tagIds) ? epic.tagIds : []
-          }))
-        };
-
-        // Check if a project with the same ID or name exists
-        const existingProject = projects.find(
-          p => p.id === validatedProject.id || p.projectName === validatedProject.projectName
-        );
-
-        setImportedProject(validatedProject);
-        setShowImportModal(true);
-      } catch (error) {
-        console.error('Error parsing project file:', error);
-        alert('Error al leer el archivo. Asegúrate de que sea un archivo de proyecto válido.');
+        const createdProject = await createProject(newProject)
+        navigate(`/project/${createdProject.id}`)
+      } catch (err) {
+        console.error('Error al importar proyecto:', err)
       }
-    };
-    reader.readAsText(file);
-    event.target.value = ''; // Reset input
-  };
+    }
+    reader.readAsText(file)
+  }
 
-  const handleImportAsNew = () => {
-    if (!importedProject) return;
+  const handleLogout = async () => {
+    try {
+      await signOut()
+      navigate('/login')
+    } catch (err) {
+      console.error('Error al cerrar sesión:', err)
+    }
+  }
 
-    const newProject = {
-      ...importedProject,
-      id: crypto.randomUUID(), // Generate new ID
-      projectName: `${importedProject.projectName} (Importado)`
-    };
-
-    const updatedProjects = [...projects, newProject];
-    setProjects(updatedProjects);
-    saveProjects({ selectedProjectId: newProject.id, projects: updatedProjects });
-    setShowImportModal(false);
-    navigate(`/project/${newProject.id}`);
-  };
-
-  const handleImportReplace = () => {
-    if (!importedProject) return;
-
-    const updatedProjects = projects.map(p => 
-      (p.id === importedProject.id || p.projectName === importedProject.projectName)
-        ? importedProject
-        : p
-    );
-
-    setProjects(updatedProjects);
-    saveProjects({ selectedProjectId: importedProject.id, projects: updatedProjects });
-    setShowImportModal(false);
-    navigate(`/project/${importedProject.id}`);
-  };
-
-  const handleDeleteProject = (project: Project, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setProjectToDelete(project);
-  };
-
-  const confirmDelete = () => {
-    if (!projectToDelete) return;
-
-    const updatedProjects = projects.filter(p => p.id !== projectToDelete.id);
-    setProjects(updatedProjects);
-    saveProjects({ selectedProjectId: null, projects: updatedProjects });
-    setProjectToDelete(null);
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-4">
-            Planificador de Proyectos
-          </h1>
-          <p className="text-lg text-slate-600">
-            Gestiona tus proyectos de manera eficiente con nuestra herramienta de planificación
-          </p>
+    <div className="min-h-screen bg-[#F8FAFC] flex">
+      {/* Sidebar */}
+      <aside className="w-72 bg-white border-r border-gray-200 p-6 flex flex-col">
+        <div className="flex items-center mb-8">
+          <span className="text-2xl font-bold text-gray-900">Project Timeline</span>
+        </div>
+        
+        {/* User Info */}
+        <div className="mb-8 p-4 bg-gray-50 rounded-xl">
+          <p className="text-sm font-medium text-gray-900">{user?.email}</p>
+          <p className="text-xs text-gray-500 mt-1">Logged in</p>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2">
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 hover:shadow-md transition-all">
-            <div className="flex flex-col items-center text-center space-y-4">
-              <div className="p-4 bg-blue-50 rounded-full">
-                <Plus className="w-8 h-8 text-blue-600" />
-              </div>
-              <h2 className="text-xl font-semibold text-slate-800">Nuevo Proyecto</h2>
-              <p className="text-slate-600">
-                Comienza un nuevo proyecto desde cero
-              </p>
-              <div className="flex gap-3">
+        <nav className="space-y-4 flex-1">
+          <a href="#" className="flex items-center space-x-3 text-blue-600 bg-blue-50 rounded-xl p-4">
+            <LayoutDashboard className="h-5 w-5" />
+            <span className="font-medium">Dashboard</span>
+          </a>
+          <a href="#" className="flex items-center space-x-3 text-gray-600 hover:bg-gray-50 rounded-xl p-4">
+            <Settings className="h-5 w-5" />
+            <span>Settings</span>
+          </a>
+        </nav>
+
+        <button
+          onClick={handleLogout}
+          className="mt-auto flex items-center justify-center space-x-2 p-4 text-red-600 hover:bg-red-50 rounded-xl transition-colors w-full"
+        >
+          <LogOut className="h-5 w-5" />
+          <span className="font-medium">Cerrar Sesión</span>
+        </button>
+      </aside>
+
+      {/* Main content */}
+      <div className="flex-1 p-4">
+        <div className="max-w-[1400px] mx-auto p-4" >
+          <div className="grid grid-cols-3 gap-8 mb-8">
+            {/* Quick Actions Card */}
+            <div className="col-span-2 bg-white rounded-2xl shadow-lg p-4 hover:shadow-xl transition-shadow duration-300 mb-2">
+              <h2 className="text-2xl font-semibold mb-8 text-gray-900">Acciones Rápidas</h2>
+              <div className="grid grid-cols-2 gap-8">
+                {/* Create Project Button */}
                 <button
                   onClick={handleCreateProject}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors"
+                  className="group flex flex-col items-start p-4 rounded-xl bg-blue-50 hover:bg-blue-100 transition-all duration-300 border-2 border-blue-100 hover:border-blue-200 mb-4"
                 >
-                  Crear Proyecto
+                  <div className="p-4 bg-blue-500 rounded-xl mb-6 group-hover:scale-110 transition-transform duration-300">
+                    <PlusIcon className="h-8 w-8 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900 text-xl mb-2">Nuevo Proyecto</h3>
+                    <p className="text-sm text-gray-600">Comenzar desde cero</p>
+                  </div>
                 </button>
-                <button
-                  onClick={handleImportClick}
-                  className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-colors"
-                >
-                  Importar Proyecto
-                </button>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleImportProject}
-                  accept=".json"
-                  className="hidden"
-                />
+
+                {/* Import Project Button */}
+                <div>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleImportProject}
+                    accept=".json"
+                    className="hidden"
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="group flex flex-col items-start p-4 rounded-xl bg-purple-50 hover:bg-purple-100 transition-all duration-300 w-full border-2 border-purple-100 hover:border-purple-200"
+                  >
+                    <div className="p-4 bg-purple-500 rounded-xl mb-6 group-hover:scale-110 transition-transform duration-300">
+                      <Upload className="h-8 w-8 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900 text-xl mb-2">Importar Proyecto</h3>
+                      <p className="text-sm text-gray-600">Desde archivo JSON</p>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Stats Card */}
+            <div className="bg-white rounded-2xl shadow-lg p-4 hover:shadow-xl transition-shadow duration-300">
+              <h2 className="text-2xl font-semibold mb-8 text-gray-900">Estadísticas</h2>
+              <div className="space-y-6">
+                <div className="p-6 bg-gray-50 rounded-xl">
+                  <p className="text-sm text-gray-500 mb-2">Total Proyectos</p>
+                  <p className="text-4xl font-bold text-gray-900">{projects.length}</p>
+                </div>
+                {/* Add more stats here */}
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-            <div className="flex flex-col items-center text-center space-y-4">
-              <div className="p-4 bg-emerald-50 rounded-full">
-                <LayoutDashboard className="w-8 h-8 text-emerald-600" />
-              </div>
-              <h2 className="text-xl font-semibold text-slate-800">Proyectos Existentes</h2>
+          {/* Recent Projects */}
+          <div className="bg-white rounded-2xl shadow-lg p-4 hover:shadow-xl transition-shadow duration-300">
+            <h2 className="text-2xl font-semibold mb-8 text-gray-900">Proyectos Recientes</h2>
+            <div className="space-y-4">
               {projects.length > 0 ? (
-                <div className="w-full space-y-3">
-                  {projects.map(project => (
-                    <div
-                      key={project.id}
-                      className="group flex items-center gap-3 w-full"
-                    >
-                      <button
-                        onClick={() => navigate(`/project/${project.id}`)}
-                        className="flex-1 px-4 py-3 bg-slate-50 hover:bg-slate-100 rounded-xl text-left transition-colors"
-                      >
-                        <span className="font-medium text-slate-700">{project.projectName}</span>
-                      </button>
-                      <button
-                        onClick={(e) => handleDeleteProject(project, e)}
-                        className="p-2 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
-                        title="Eliminar proyecto"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
+                projects.map(project => (
+                  <button
+                    key={project.id}
+                    onClick={() => navigate(`/project/${project.id}`)}
+                    className="w-full flex items-center justify-between p-6 rounded-xl hover:bg-gray-50 transition-all duration-300 border-2 border-gray-100 hover:border-gray-200"
+                  >
+                    <div className="flex items-center space-x-6">
+                      <div className="p-4 bg-gray-100 rounded-xl group-hover:bg-gray-200 transition-colors">
+                        <LayoutDashboard className="h-6 w-6 text-gray-600" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-gray-900 text-lg mb-1">{project.project_name}</h3>
+                        <p className="text-sm text-gray-600">{project.current_phase}</p>
+                      </div>
                     </div>
-                  ))}
-                </div>
+                    <div className="flex items-center space-x-8">
+                      <div className="text-right">
+                        <p className="text-lg font-semibold text-gray-900">{project.progress_status}%</p>
+                        <p className="text-sm text-gray-600">Progreso</p>
+                      </div>
+                      <div className="w-32 h-3 bg-gray-100 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-blue-500 rounded-full transition-all duration-300"
+                          style={{ width: `${project.progress_status}%` }}
+                        />
+                      </div>
+                    </div>
+                  </button>
+                ))
               ) : (
-                <p className="text-slate-600">
-                  No hay proyectos existentes
-                </p>
+                <p className="text-center text-gray-500 py-8">No hay proyectos existentes</p>
               )}
             </div>
           </div>
         </div>
       </div>
-
-      <DeleteProjectModal
-        projectName={projectToDelete?.projectName || ''}
-        isOpen={!!projectToDelete}
-        onClose={() => setProjectToDelete(null)}
-        onConfirm={confirmDelete}
-      />
-
-      <ImportProjectModal
-        isOpen={showImportModal}
-        onClose={() => {
-          setShowImportModal(false);
-          setImportedProject(null);
-        }}
-        onImportAsNew={handleImportAsNew}
-        onImportReplace={handleImportReplace}
-        projectName={importedProject?.projectName || ''}
-        hasExistingProject={!!projects.find(
-          p => importedProject && (p.id === importedProject.id || p.projectName === importedProject.projectName)
-        )}
-      />
     </div>
-  );
+  )
 }
