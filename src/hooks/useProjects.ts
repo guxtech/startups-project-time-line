@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { projectService } from "../services/projectService";
-import type { Database } from "../types/database.types";
-
-type Project = Database["public"]["Tables"]["projects"]["Row"];
+import { epicService } from "../services/epicService";
+import { tagService } from "../services/tagService";
+import type { Project, ProjectWithRelations } from "../types/project";
+import { mapDbEpicToEpic, mapDbTagToTag } from "../utils/mappers";
 
 export function useProjects() {
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<ProjectWithRelations[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
@@ -16,8 +17,22 @@ export function useProjects() {
 
     const loadProjects = async () => {
       try {
-        const data = await projectService.getProjects();
-        setProjects(data);
+        const projectsData = await projectService.getProjects();
+        const projectsWithRelations = await Promise.all(
+          projectsData.map(async (project) => {
+            const [dbEpics, dbTags] = await Promise.all([
+              epicService.getProjectEpics(project.id),
+              tagService.getProjectTags(project.id),
+            ]);
+
+            return {
+              ...project,
+              epics: dbEpics.map(mapDbEpicToEpic),
+              tags: dbTags.map(mapDbTagToTag),
+            };
+          })
+        );
+        setProjects(projectsWithRelations);
         setError(null);
       } catch (err) {
         setError("Error al cargar los proyectos");
@@ -35,7 +50,14 @@ export function useProjects() {
   ) => {
     try {
       const newProject = await projectService.createProject(projectData);
-      setProjects((prev) => [newProject, ...prev]);
+      setProjects((prev) => [
+        {
+          ...newProject,
+          epics: [],
+          tags: [],
+        },
+        ...prev,
+      ]);
       return newProject;
     } catch (err) {
       setError("Error al crear el proyecto");
@@ -43,13 +65,50 @@ export function useProjects() {
     }
   };
 
-  const updateProject = async (id: string, updates: Partial<Project>) => {
+  const updateProject = async (
+    projectId: string,
+    updates: Partial<Project>
+  ) => {
     try {
-      const updatedProject = await projectService.updateProject(id, updates);
-      setProjects((prev) =>
-        prev.map((p) => (p.id === id ? updatedProject : p))
+      const updatedProject = await projectService.updateProject(
+        projectId,
+        updates
       );
-      return updatedProject;
+
+      // Si hay actualizaciones de epics, actualizarlos también
+      if (updates.epics) {
+        await Promise.all(
+          updates.epics.map((epic) =>
+            epicService.updateEpic(epic.id, {
+              name: epic.name,
+              start_date: epic.startDate,
+              end_date: epic.endDate,
+              status: epic.status,
+              tag_ids: epic.tagIds,
+              order: epic.order,
+              project_id: projectId,
+            })
+          )
+        );
+      }
+
+      // Recargar el proyecto con sus relaciones actualizadas
+      const [dbEpics, dbTags] = await Promise.all([
+        epicService.getProjectEpics(projectId),
+        tagService.getProjectTags(projectId),
+      ]);
+
+      const projectWithRelations = {
+        ...updatedProject,
+        epics: dbEpics.map(mapDbEpicToEpic),
+        tags: dbTags.map(mapDbTagToTag),
+      };
+
+      setProjects((prev) =>
+        prev.map((p) => (p.id === projectId ? projectWithRelations : p))
+      );
+
+      return projectWithRelations;
     } catch (err) {
       setError("Error al actualizar el proyecto");
       throw err;

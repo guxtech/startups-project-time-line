@@ -1,5 +1,5 @@
 import React, { useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { LayoutDashboard, LogOut, Plus as PlusIcon, Upload, Settings } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -28,8 +28,13 @@ export function WelcomeScreen() {
     }
 
     try {
-      const createdProject = await createProject(newProject)
-      navigate(`/project/${createdProject.id}`)
+      const newProjectWithDefaults = {
+        ...newProject,
+        epics: [],
+        tags: []
+      };
+      const createdProject = await createProject(newProjectWithDefaults);
+      navigate(`/project/${createdProject.id}`);
     } catch (err) {
       console.error('Error al crear proyecto:', err)
     }
@@ -83,7 +88,9 @@ export function WelcomeScreen() {
       {/* Sidebar */}
       <aside className="w-72 bg-white border-r border-gray-200 p-6 flex flex-col">
         <div className="flex items-center mb-8">
-          <span className="text-2xl font-bold text-gray-900">Project Timeline</span>
+          <Link to="/" className="text-2xl font-bold text-gray-900 hover:text-gray-700 transition-colors">
+            Project Timeline
+          </Link>
         </div>
         
         {/* User Info */}
@@ -93,14 +100,20 @@ export function WelcomeScreen() {
         </div>
 
         <nav className="space-y-4 flex-1">
-          <a href="#" className="flex items-center space-x-3 text-blue-600 bg-blue-50 rounded-xl p-4">
+          <Link 
+            to="/" 
+            className="flex items-center space-x-3 text-blue-600 bg-blue-50 rounded-xl p-4 hover:bg-blue-100 transition-colors"
+          >
             <LayoutDashboard className="h-5 w-5" />
             <span className="font-medium">Dashboard</span>
-          </a>
-          <a href="#" className="flex items-center space-x-3 text-gray-600 hover:bg-gray-50 rounded-xl p-4">
+          </Link>
+          <Link 
+            to="/settings" 
+            className="flex items-center space-x-3 text-gray-600 hover:bg-gray-50 rounded-xl p-4 transition-colors"
+          >
             <Settings className="h-5 w-5" />
             <span>Settings</span>
-          </a>
+          </Link>
         </nav>
 
         <button
@@ -178,10 +191,10 @@ export function WelcomeScreen() {
             <div className="space-y-4">
               {projects.length > 0 ? (
                 projects.map(project => (
-                  <button
+                  <Link
                     key={project.id}
-                    onClick={() => navigate(`/project/${project.id}`)}
-                    className="w-full flex items-center justify-between p-6 rounded-xl hover:bg-gray-50 transition-all duration-300 border-2 border-gray-100 hover:border-gray-200"
+                    to={`/project/${project.id}`}
+                    className="w-full flex items-center justify-between p-6 rounded-xl hover:bg-gray-50 transition-all duration-300 border-2 border-gray-100 hover:border-gray-200 group"
                   >
                     <div className="flex items-center space-x-6">
                       <div className="p-4 bg-gray-100 rounded-xl group-hover:bg-gray-200 transition-colors">
@@ -204,7 +217,7 @@ export function WelcomeScreen() {
                         />
                       </div>
                     </div>
-                  </button>
+                  </Link>
                 ))
               ) : (
                 <p className="text-center text-gray-500 py-8">No hay proyectos existentes</p>

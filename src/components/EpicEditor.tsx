@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import DatePicker from 'react-datepicker';
-import { format, parse, addMonths, isBefore, isAfter, startOfMonth, endOfMonth } from 'date-fns';
+import { parse, addMonths, isBefore, isAfter, startOfMonth, endOfMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { Epic, Project } from '../types/project';
 import { parseProjectDate, formatProjectDate } from '../utils/dateUtils';
@@ -12,7 +12,7 @@ interface EpicEditorProps {
   project: Project;
   isOpen: boolean;
   onClose: () => void;
-  onUpdate: (epicName: string, updates: Partial<Epic>) => void;
+  onUpdate: (updates: Partial<Epic>) => void;
   isNewEpic?: boolean;
 }
 
@@ -24,8 +24,8 @@ export function EpicEditor({ epic, project, isOpen, onClose, onUpdate, isNewEpic
   const [error, setError] = useState<string>('');
 
   // Calculate min and max dates based on project timeline
-  const minDate = startOfMonth(parse(project.startMonth, 'MMMM yyyy', new Date(), { locale: es }));
-  const maxDate = endOfMonth(addMonths(minDate, project.monthsToDisplay - 1));
+  const minDate = startOfMonth(parse(project.start_month, 'MMMM yyyy', new Date(), { locale: es }));
+  const maxDate = endOfMonth(addMonths(minDate, project.months_to_display - 1));
 
   useEffect(() => {
     setName(epic.name);
@@ -76,7 +76,7 @@ export function EpicEditor({ epic, project, isOpen, onClose, onUpdate, isNewEpic
       tagIds: selectedTagIds
     };
 
-    onUpdate(epic.name, updates);
+    onUpdate(updates);
     onClose();
   };
 

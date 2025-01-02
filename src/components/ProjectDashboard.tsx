@@ -3,78 +3,60 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ProjectSummary } from './ProjectSummary';
 import { Timeline } from './Timeline';
 import { Home } from 'lucide-react';
-import type { Project, ProjectList, Epic } from '../types/project';
-import { loadProjects, saveProjects } from '../utils/storage';
+import type { Epic, Project } from '../types/project';
 import { EpicsManager } from './EpicsManager';
 import { EpicEditor } from './EpicEditor';
 import { ProjectSettings } from './ProjectSettings';
+import { useProjects } from '../hooks/useProjects';
 
 export function ProjectDashboard() {
   const { projectId } = useParams();
   const navigate = useNavigate();
-  const [projectList, setProjectList] = useState<ProjectList>(loadProjects());
+  const { projects, loading, updateProject } = useProjects();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isEpicsManagerOpen, setIsEpicsManagerOpen] = useState(false);
   const [editingEpic, setEditingEpic] = useState<Epic | null>(null);
   const [isEpicEditorOpen, setIsEpicEditorOpen] = useState(false);
 
-  const currentProject = projectList.projects.find(p => p.id === projectId);
+  const currentProject = projects.find(p => p.id === projectId);
 
   useEffect(() => {
-    if (!currentProject) {
+    if (!loading && !currentProject) {
       navigate('/');
       return;
     }
-  }, [currentProject, navigate]);
+  }, [currentProject, navigate, loading]);
 
-  useEffect(() => {
-    if (projectList) {
-      saveProjects(projectList);
-    }
-  }, [projectList]);
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   if (!currentProject) {
     return null;
   }
 
-  const handleProjectUpdate = (updatedProject: Project) => {
-    const newProjectList = {
-      ...projectList,
-      projects: projectList.projects.map(p => 
-        p.id === updatedProject.id ? {
-          ...updatedProject,
-          tags: updatedProject.tags || [],
-          epics: updatedProject.epics.map(epic => ({
-            ...epic,
-            tagIds: epic.tagIds || []
-          }))
-        } : p
-      )
-    };
-    
-    setProjectList(newProjectList);
-    saveProjects(newProjectList);
-  };
-
-  const handleEpicStatusChange = (epicName: string, newStatus: Epic['status']) => {
+  const handleEpicStatusChange = (epicId: string, newStatus: Epic['status']) => {
     const updatedProject = {
       ...currentProject,
       epics: currentProject.epics.map(epic =>
-        epic.name === epicName ? { ...epic, status: newStatus } : epic
+        epic.id === epicId ? { ...epic, status: newStatus } : epic
       )
     };
-    handleProjectUpdate(updatedProject);
+    updateProject(currentProject.id, updatedProject);
   };
 
-  const handleEpicUpdate = (epicName: string, updates: Partial<Epic>) => {
+  const handleEpicUpdate = (epicId: string, updates: Partial<Epic>) => {
     const updatedProject = {
       ...currentProject,
       epics: currentProject.epics.map(epic =>
-        epic.name === epicName ? { ...epic, ...updates } : epic
-      ),
-      currentPhase: currentProject.currentPhase === epicName ? updates.name || epicName : currentProject.currentPhase
+        epic.id === epicId ? { ...epic, ...updates } : epic
+      )
     };
-    handleProjectUpdate(updatedProject);
+    updateProject(currentProject.id, updatedProject);
     setIsEpicEditorOpen(false);
     setEditingEpic(null);
   };
@@ -84,18 +66,15 @@ export function ProjectDashboard() {
       ...currentProject,
       epics: [...currentProject.epics, { ...newEpic, order: currentProject.epics.length }]
     };
-    handleProjectUpdate(updatedProject);
+    updateProject(currentProject.id, updatedProject);
   };
 
-  const handleDeleteEpic = (epicName: string) => {
+  const handleDeleteEpic = (epicId: string) => {
     const updatedProject = {
       ...currentProject,
-      epics: currentProject.epics.filter(epic => epic.name !== epicName),
-      currentPhase: currentProject.currentPhase === epicName ? 
-        (currentProject.epics[0]?.name || "Sin fase") : 
-        currentProject.currentPhase
+      epics: currentProject.epics.filter(epic => epic.id !== epicId)
     };
-    handleProjectUpdate(updatedProject);
+    updateProject(currentProject.id, updatedProject);
   };
 
   const handleReorderEpics = (reorderedEpics: Epic[]) => {
@@ -103,7 +82,7 @@ export function ProjectDashboard() {
       ...currentProject,
       epics: reorderedEpics
     };
-    handleProjectUpdate(updatedProject);
+    updateProject(currentProject.id, updatedProject);
   };
 
   const handleTimelineEpicClick = (epic: Epic) => {
@@ -141,7 +120,7 @@ export function ProjectDashboard() {
 
         <ProjectSettings
           project={currentProject}
-          onUpdate={handleProjectUpdate}
+          onUpdate={(updates: Partial<Project>) => updateProject(currentProject.id, updates)}
           isOpen={isSettingsOpen}
           onClose={() => setIsSettingsOpen(false)}
         />
@@ -165,7 +144,7 @@ export function ProjectDashboard() {
               setIsEpicEditorOpen(false);
               setEditingEpic(null);
             }}
-            onUpdate={handleEpicUpdate}
+            onUpdate={(updates) => handleEpicUpdate(editingEpic.id, updates)}
             isNewEpic={false}
           />
         )}

@@ -1,7 +1,7 @@
 import React from 'react';
 import { format, parse } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import type { Project, Epic } from '../types/project';
 import { calculatePosition, calculateCurrentDatePosition, parseProjectDate } from '../utils/dateUtils';
 import { TagBadge } from './TagBadge';
@@ -40,9 +40,9 @@ export function Timeline({ project, onReorderEpics, onEditEpic, onEpicStatusChan
   };
 
   const months = Array.from(
-    { length: project.monthsToDisplay },
+    { length: project.months_to_display },
     (_, i) => {
-      const date = parse(project.startMonth, 'MMMM yyyy', new Date(), { locale: es });
+      const date = parse(project.start_month, 'MMMM yyyy', new Date(), { locale: es });
       date.setMonth(date.getMonth() + i);
       return {
         key: format(date, 'yyyy-MM'),
@@ -53,8 +53,8 @@ export function Timeline({ project, onReorderEpics, onEditEpic, onEpicStatusChan
 
   const currentDatePosition = calculateCurrentDatePosition(
     new Date(),
-    project.startMonth,
-    project.monthsToDisplay
+    project.start_month,
+    project.months_to_display
   );
 
   const legendItems = [
@@ -64,7 +64,7 @@ export function Timeline({ project, onReorderEpics, onEditEpic, onEpicStatusChan
     { status: 'No Iniciada', color: 'bg-slate-300' },
   ];
 
-  const handleDragEnd = (result: any) => {
+  const handleDragEnd = (result: DropResult) => {
     if (!result.destination) return;
 
     const items = Array.from(project.epics);
@@ -93,7 +93,7 @@ export function Timeline({ project, onReorderEpics, onEditEpic, onEpicStatusChan
 
         <div className="timeline-grid gap-4">
           <div className="font-medium text-slate-600">Épicas</div>
-          <div className="grid" style={{ gridTemplateColumns: `repeat(${project.monthsToDisplay}, 1fr)` }}>
+          <div className="grid" style={{ gridTemplateColumns: `repeat(${project.months_to_display}, 1fr)` }}>
             {months.map(({ key, label }) => (
               <div key={key} className="text-sm font-medium text-slate-600 text-center">
                 {label}
@@ -111,8 +111,8 @@ export function Timeline({ project, onReorderEpics, onEditEpic, onEpicStatusChan
                 className="mt-6 space-y-4 relative"
               >
                 {project.epics.map((epic, index) => {
-                  const startPosition = calculatePosition(epic.startDate, project.startMonth, project.monthsToDisplay);
-                  const endPosition = calculatePosition(epic.endDate, project.startMonth, project.monthsToDisplay);
+                  const startPosition = calculatePosition(epic.startDate, project.start_month, project.months_to_display);
+                  const endPosition = calculatePosition(epic.endDate, project.start_month, project.months_to_display);
                   const width = Math.max(0, endPosition - startPosition);
                   const epicTags = (epic.tagIds || [])
                     .map(tagId => project.tags?.find(tag => tag.id === tagId))

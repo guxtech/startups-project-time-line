@@ -1,3 +1,9 @@
+import type { Database } from "./database.types";
+
+export type DbProject = Database["public"]["Tables"]["projects"]["Row"];
+export type DbEpic = Database["public"]["Tables"]["epics"]["Row"];
+export type DbTag = Database["public"]["Tables"]["tags"]["Row"];
+
 export interface Tag {
   id: string;
   name: string;
@@ -5,25 +11,21 @@ export interface Tag {
 }
 
 export interface Epic {
+  id: string;
   name: string;
   startDate: string;
   endDate: string;
-  status: 'No Iniciada' | 'En Progreso' | 'Completada' | 'Atrasada';
+  status: "No Iniciada" | "En Progreso" | "Completada" | "Atrasada";
   tagIds: string[];
-  order?: number; // Add order field for explicit ordering
+  order: number;
 }
 
-export interface Project {
-  id: string;
-  projectName: string;
-  totalEstimatedHours: number;
-  totalConsumedHours: number;
-  currentPhase: string;
-  totalTasks: number;
-  progressStatus: number;
-  startMonth: string;
-  monthsToDisplay: number;
-  currentDate: string;
+export interface Project extends DbProject {
+  epics: Epic[];
+  tags: Tag[];
+}
+
+export interface ProjectWithRelations extends Omit<Project, "epics" | "tags"> {
   epics: Epic[];
   tags: Tag[];
 }

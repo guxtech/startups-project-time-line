@@ -1,9 +1,9 @@
 import React, { useState, useRef } from 'react';
-import { Settings, Download, Upload, AlertTriangle } from 'lucide-react';
+import { Download, Upload, AlertTriangle } from 'lucide-react';
 import DatePicker from 'react-datepicker';
 import { format, parse } from 'date-fns';
 import { es } from 'date-fns/locale';
-import type { Project, Tag } from '../types/project';
+import type { Project, Tag, Epic } from '../types/project';
 import { TagManager } from './TagManager';
 import "react-datepicker/dist/react-datepicker.css";
 
@@ -67,7 +67,7 @@ interface ProjectSettingsProps {
 
 export function ProjectSettings({ project, onUpdate, isOpen, onClose }: ProjectSettingsProps) {
   const [selectedStartMonth, setSelectedStartMonth] = useState(
-    parse(project.startMonth, 'MMMM yyyy', new Date(), { locale: es })
+    parse(project.start_month, 'MMMM yyyy', new Date(), { locale: es })
   );
   const [showImportWarning, setShowImportWarning] = useState(false);
   const [importedProject, setImportedProject] = useState<Project | null>(null);
@@ -75,7 +75,6 @@ export function ProjectSettings({ project, onUpdate, isOpen, onClose }: ProjectS
 
   const handleExportProject = () => {
     try {
-      // Create a deep copy of the project to avoid reference issues
       const projectToExport = JSON.parse(JSON.stringify({
         ...project,
         tags: project.tags || [],
@@ -90,7 +89,7 @@ export function ProjectSettings({ project, onUpdate, isOpen, onClose }: ProjectS
       const url = URL.createObjectURL(dataBlob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `${project.projectName.toLowerCase().replace(/\s+/g, '-')}.json`;
+      link.download = `${project.project_name.toLowerCase().replace(/\s+/g, '-')}.json`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -99,10 +98,6 @@ export function ProjectSettings({ project, onUpdate, isOpen, onClose }: ProjectS
       console.error('Error exporting project:', error);
       alert('Error al exportar el proyecto. Por favor, intenta nuevamente.');
     }
-  };
-
-  const handleImportClick = () => {
-    fileInputRef.current?.click();
   };
 
   const handleImportProject = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -114,31 +109,28 @@ export function ProjectSettings({ project, onUpdate, isOpen, onClose }: ProjectS
       try {
         const importedData = JSON.parse(e.target?.result as string);
         
-        // Validate required fields
-        if (!importedData.id || !importedData.projectName || !Array.isArray(importedData.epics)) {
+        if (!importedData.id || !importedData.project_name || !Array.isArray(importedData.epics)) {
           throw new Error('Formato de archivo de proyecto inválido');
         }
 
-        // Create a new project object with all required fields
         const validatedProject: Project = {
           id: importedData.id,
-          projectName: importedData.projectName,
-          totalEstimatedHours: importedData.totalEstimatedHours || 0,
-          totalConsumedHours: importedData.totalConsumedHours || 0,
-          currentPhase: importedData.currentPhase || '',
-          totalTasks: importedData.totalTasks || 0,
-          progressStatus: importedData.progressStatus || 0,
-          startMonth: importedData.startMonth || format(new Date(), 'MMMM yyyy', { locale: es }),
-          monthsToDisplay: importedData.monthsToDisplay || 6,
-          currentDate: importedData.currentDate || new Date().toISOString(),
-          tags: Array.isArray(importedData.tags) ? importedData.tags : [],
-          epics: importedData.epics.map((epic: any) => ({
-            name: epic.name,
-            startDate: epic.startDate,
-            endDate: epic.endDate,
-            status: epic.status,
+          created_at: new Date().toISOString(),
+          project_name: importedData.project_name,
+          total_estimated_hours: importedData.total_estimated_hours || 0,
+          total_consumed_hours: importedData.total_consumed_hours || 0,
+          current_phase: importedData.current_phase || '',
+          total_tasks: importedData.total_tasks || 0,
+          progress_status: importedData.progress_status || 0,
+          start_month: importedData.start_month || format(new Date(), 'MMMM yyyy', { locale: es }),
+          months_to_display: importedData.months_to_display || 6,
+          project_date: importedData.project_date || new Date().toISOString(),
+          user_id: importedData.user_id,
+          epics: importedData.epics.map((epic: Epic) => ({
+            ...epic,
             tagIds: Array.isArray(epic.tagIds) ? epic.tagIds : []
-          }))
+          })),
+          tags: Array.isArray(importedData.tags) ? importedData.tags : []
         };
 
         setImportedProject(validatedProject);
@@ -149,7 +141,7 @@ export function ProjectSettings({ project, onUpdate, isOpen, onClose }: ProjectS
       }
     };
     reader.readAsText(file);
-    event.target.value = ''; // Reset input
+    event.target.value = '';
   };
 
   const handleConfirmImport = () => {
@@ -188,14 +180,14 @@ export function ProjectSettings({ project, onUpdate, isOpen, onClose }: ProjectS
     
     const updatedProject: Project = {
       ...project,
-      projectName: formData.get('projectName') as string,
-      totalEstimatedHours: Number(formData.get('totalEstimatedHours')),
-      totalConsumedHours: Number(formData.get('totalConsumedHours')),
-      currentPhase: formData.get('currentPhase') as string,
-      totalTasks: Number(formData.get('totalTasks')),
-      progressStatus: Number(formData.get('progressStatus')),
-      startMonth: format(selectedStartMonth, 'MMMM yyyy', { locale: es }),
-      monthsToDisplay: Number(formData.get('monthsToDisplay')),
+      project_name: formData.get('projectName') as string,
+      total_estimated_hours: Number(formData.get('totalEstimatedHours')),
+      total_consumed_hours: Number(formData.get('totalConsumedHours')),
+      current_phase: formData.get('currentPhase') as string,
+      total_tasks: Number(formData.get('totalTasks')),
+      progress_status: Number(formData.get('progressStatus')),
+      start_month: format(selectedStartMonth, 'MMMM yyyy', { locale: es }),
+      months_to_display: Number(formData.get('monthsToDisplay')),
     };
 
     onUpdate(updatedProject);
@@ -226,7 +218,7 @@ export function ProjectSettings({ project, onUpdate, isOpen, onClose }: ProjectS
             Exportar Proyecto
           </button>
           <button
-            onClick={handleImportClick}
+            onClick={() => fileInputRef.current?.click()}
             className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
           >
             <Upload className="w-5 h-5" />
@@ -252,7 +244,7 @@ export function ProjectSettings({ project, onUpdate, isOpen, onClose }: ProjectS
                   type="text"
                   id="projectName"
                   name="projectName"
-                  defaultValue={project.projectName}
+                  defaultValue={project.project_name}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
@@ -264,7 +256,7 @@ export function ProjectSettings({ project, onUpdate, isOpen, onClose }: ProjectS
                 <select
                   id="currentPhase"
                   name="currentPhase"
-                  defaultValue={project.currentPhase}
+                  defaultValue={project.current_phase}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 >
                   {project.epics.map((epic) => (
@@ -283,7 +275,7 @@ export function ProjectSettings({ project, onUpdate, isOpen, onClose }: ProjectS
                   type="number"
                   id="totalEstimatedHours"
                   name="totalEstimatedHours"
-                  defaultValue={project.totalEstimatedHours}
+                  defaultValue={project.total_estimated_hours}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
@@ -296,7 +288,7 @@ export function ProjectSettings({ project, onUpdate, isOpen, onClose }: ProjectS
                   type="number"
                   id="totalConsumedHours"
                   name="totalConsumedHours"
-                  defaultValue={project.totalConsumedHours}
+                  defaultValue={project.total_consumed_hours}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
@@ -309,7 +301,7 @@ export function ProjectSettings({ project, onUpdate, isOpen, onClose }: ProjectS
                   type="number"
                   id="totalTasks"
                   name="totalTasks"
-                  defaultValue={project.totalTasks}
+                  defaultValue={project.total_tasks}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
@@ -322,7 +314,7 @@ export function ProjectSettings({ project, onUpdate, isOpen, onClose }: ProjectS
                   type="number"
                   id="progressStatus"
                   name="progressStatus"
-                  defaultValue={project.progressStatus}
+                  defaultValue={project.progress_status}
                   min="0"
                   max="100"
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
@@ -351,7 +343,7 @@ export function ProjectSettings({ project, onUpdate, isOpen, onClose }: ProjectS
                   type="number"
                   id="monthsToDisplay"
                   name="monthsToDisplay"
-                  defaultValue={project.monthsToDisplay}
+                  defaultValue={project.months_to_display}
                   min="1"
                   max="24"
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
@@ -392,7 +384,7 @@ export function ProjectSettings({ project, onUpdate, isOpen, onClose }: ProjectS
             setImportedProject(null);
           }}
           onConfirm={handleConfirmImport}
-          projectName={importedProject?.projectName || ''}
+          projectName={importedProject?.project_name || ''}
         />
       </div>
     </div>
