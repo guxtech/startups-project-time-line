@@ -1,9 +1,8 @@
 import { supabase } from "../config/supabase";
 import type { Database } from "../types/database.types";
+import type { DbProjectInsert } from "../types/project";
 
 type Project = Database["public"]["Tables"]["projects"]["Row"];
-type ProjectInsert = Database["public"]["Tables"]["projects"]["Insert"];
-type ProjectUpdate = Database["public"]["Tables"]["projects"]["Update"];
 
 export const projectService = {
   async getProjects() {
@@ -36,7 +35,7 @@ export const projectService = {
     };
   },
 
-  async createProject(project: ProjectInsert) {
+  async createProject(project: DbProjectInsert) {
     const { data, error } = await supabase
       .from("projects")
       .insert(project)
@@ -47,7 +46,10 @@ export const projectService = {
     return data as Project;
   },
 
-  async updateProject(id: string, updates: ProjectUpdate) {
+  async updateProject(
+    id: string,
+    updates: Database["public"]["Tables"]["projects"]["Update"]
+  ) {
     const { data, error } = await supabase
       .from("projects")
       .update(updates)

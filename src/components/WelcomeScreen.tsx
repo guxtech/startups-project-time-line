@@ -1,10 +1,14 @@
 import React, { useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { LayoutDashboard, LogOut, Plus as PlusIcon, Upload, Settings } from 'lucide-react'
-import { format } from 'date-fns'
+import { format, parse } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { useAuth } from '../contexts/AuthContext'
 import { useProjects } from '../hooks/useProjects'
+import { projectService } from '../services/projectService'
+import { tagService } from '../services/tagService'
+import { epicService } from '../services/epicService'
+import type { ImportedProject, ImportedEpic, ImportedTag } from '../types/project'
 
 export function WelcomeScreen() {
   const navigate = useNavigate()
@@ -28,12 +32,7 @@ export function WelcomeScreen() {
     }
 
     try {
-      const newProjectWithDefaults = {
-        ...newProject,
-        epics: [],
-        tags: []
-      };
-      const createdProject = await createProject(newProjectWithDefaults);
+      const createdProject = await createProject(newProject);
       navigate(`/project/${createdProject.id}`);
     } catch (err) {
       console.error('Error al crear proyecto:', err)
@@ -47,23 +46,86 @@ export function WelcomeScreen() {
     const reader = new FileReader()
     reader.onload = async (e) => {
       try {
-        const projectData = JSON.parse(e.target?.result as string)
-        const startDate = new Date()
+        const importedData = JSON.parse(e.target?.result as string) as ImportedProject
         
-        const newProject = {
-          ...projectData,
-          project_date: startDate.toISOString(),
-          user_id: user?.id || '',
-          start_month: format(startDate, 'MMMM yyyy', { locale: es }),
+        // Validate required fields
+        if (!importedData.projectName) {
+          throw new Error('El archivo no contiene un nombre de proyecto válido')
         }
 
-        const createdProject = await createProject(newProject)
-        navigate(`/project/${createdProject.id}`)
+        // Create new project structure for Supabase
+        const startDate = new Date()
+        
+        // First, create the project without relations
+        const projectData = {
+          project_name: importedData.projectName,
+          total_estimated_hours: importedData.totalEstimatedHours || 0,
+          total_consumed_hours: importedData.totalConsumedHours || 0,
+          current_phase: importedData.currentPhase || 'Planificación',
+          total_tasks: importedData.totalTasks || 0,
+          progress_status: importedData.progressStatus || 0,
+          start_month: importedData.startMonth || format(startDate, 'MMMM yyyy', { locale: es }),
+          months_to_display: importedData.monthsToDisplay || 6,
+          project_date: startDate.toISOString(),
+          user_id: user?.id || ''
+        }
+
+        try {
+          // Create the project first
+          const createdProject = await projectService.createProject(projectData)
+
+          // Then create tags
+          const createdTags = await Promise.all(
+            (importedData.tags || []).map(async (tag: ImportedTag) => {
+              const tagData = {
+                name: tag.name,
+                color: tag.color,
+                project_id: createdProject.id
+              }
+              return await tagService.createTag(tagData)
+            })
+          )
+
+          // Create a map of old tag IDs to new tag IDs
+          const tagIdMap = new Map()
+          importedData.tags.forEach((oldTag: ImportedTag, index: number) => {
+            tagIdMap.set(oldTag.id, createdTags[index].id)
+          })
+
+          // Then create epics with the new tag IDs
+          await Promise.all(
+            (importedData.epics || []).map(async (epic: ImportedEpic, index: number) => {
+              // Convert dates from Spanish format to ISO string
+              const startDate = parse(epic.startDate, "d 'de' MMMM yyyy", new Date(), { locale: es })
+              const endDate = parse(epic.endDate, "d 'de' MMMM yyyy", new Date(), { locale: es })
+              
+              const epicData = {
+                name: epic.name,
+                start_date: startDate.toISOString(),
+                end_date: endDate.toISOString(),
+                status: epic.status,
+                tag_ids: epic.tagIds.map((oldId: string) => tagIdMap.get(oldId) || ''),
+                order: index,
+                project_id: createdProject.id
+              }
+              return await epicService.createEpic(epicData)
+            })
+          )
+
+          // Navigate to the new project
+          navigate(`/project/${createdProject.id}`)
+        } catch (err) {
+          console.error('Error al crear el proyecto en Supabase:', err)
+          throw new Error('No se pudo crear el proyecto en la base de datos')
+        }
       } catch (err) {
         console.error('Error al importar proyecto:', err)
+        alert(err instanceof Error ? err.message : 'Error al importar el proyecto')
       }
     }
     reader.readAsText(file)
+    // Reset input value to allow importing the same file again
+    event.target.value = ''
   }
 
   const handleLogout = async () => {

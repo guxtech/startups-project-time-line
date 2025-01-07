@@ -3,11 +3,11 @@ import { useAuth } from "../contexts/AuthContext";
 import { projectService } from "../services/projectService";
 import { epicService } from "../services/epicService";
 import { tagService } from "../services/tagService";
-import type { Project, ProjectWithRelations } from "../types/project";
+import type { Project, DbProjectInsert } from "../types/project";
 import { mapDbEpicToEpic, mapDbTagToTag } from "../utils/mappers";
 
 export function useProjects() {
-  const [projects, setProjects] = useState<ProjectWithRelations[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
@@ -45,9 +45,7 @@ export function useProjects() {
     loadProjects();
   }, [user]);
 
-  const createProject = async (
-    projectData: Omit<Project, "id" | "created_at">
-  ) => {
+  const createProject = async (projectData: DbProjectInsert) => {
     try {
       const newProject = await projectService.createProject(projectData);
       setProjects((prev) => [
