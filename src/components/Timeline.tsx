@@ -1,7 +1,7 @@
 import React from 'react';
 import { format, parse } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
+import { DragDropContext, Droppable, Draggable, type DropResult, type DroppableProvided, type DraggableProvided, type DraggableStateSnapshot } from 'react-beautiful-dnd';
 import type { Project, Epic } from '../types/project';
 import { calculatePosition, calculateCurrentDatePosition, parseProjectDate } from '../utils/dateUtils';
 import { TagBadge } from './TagBadge';
@@ -11,7 +11,7 @@ interface TimelineProps {
   project: Project;
   onReorderEpics: (epics: Epic[]) => void;
   onEditEpic: (epic: Epic) => void;
-  onEpicStatusChange: (epicName: string, newStatus: Epic['status']) => void;
+  onEpicStatusChange: (epicId: string, newStatus: Epic['status']) => void;
 }
 
 export function Timeline({ project, onReorderEpics, onEditEpic, onEpicStatusChange }: TimelineProps) {
@@ -104,7 +104,7 @@ export function Timeline({ project, onReorderEpics, onEditEpic, onEpicStatusChan
 
         <DragDropContext onDragEnd={handleDragEnd}>
           <Droppable droppableId="epics">
-            {(provided) => (
+            {(provided: DroppableProvided) => (
               <div
                 ref={provided.innerRef}
                 {...provided.droppableProps}
@@ -114,13 +114,11 @@ export function Timeline({ project, onReorderEpics, onEditEpic, onEpicStatusChan
                   const startPosition = calculatePosition(epic.startDate, project.start_month, project.months_to_display);
                   const endPosition = calculatePosition(epic.endDate, project.start_month, project.months_to_display);
                   const width = Math.max(0, endPosition - startPosition);
-                  const epicTags = (epic.tagIds || [])
-                    .map(tagId => project.tags?.find(tag => tag.id === tagId))
-                    .filter(tag => tag);
+                  const epicTags = project.tags.filter(tag => epic.tagIds?.includes(tag.id));
 
                   return (
-                    <Draggable key={epic.name} draggableId={epic.name} index={index}>
-                      {(provided, snapshot) => (
+                    <Draggable key={epic.id} draggableId={epic.id} index={index}>
+                      {(provided: DraggableProvided, snapshot: DraggableStateSnapshot) => (
                         <div
                           ref={provided.innerRef}
                           {...provided.draggableProps}
@@ -139,28 +137,20 @@ export function Timeline({ project, onReorderEpics, onEditEpic, onEpicStatusChan
                               <div className="flex items-center gap-3">
                                 <div 
                                   className={`w-2.5 h-2.5 rounded-full ${getStatusColor(epic.status)} cursor-pointer hover:ring-2 hover:ring-offset-2 hover:ring-current transition-all`}
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    onEpicStatusChange(epic.name, getNextStatus(epic.status));
-                                  }}
+                                  onClick={() => onEpicStatusChange(epic.id, getNextStatus(epic.status))}
                                   title="Clic para cambiar estado"
                                 />
                                 <span 
                                   className="text-sm font-medium text-slate-700 truncate cursor-pointer hover:text-blue-600 transition-colors" 
                                   title={epic.name}
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    onEditEpic(epic);
-                                  }}
+                                  onClick={() => onEditEpic(epic)}
                                 >
                                   {epic.name}
                                 </span>
                               </div>
                               {epicTags.length > 0 && (
                                 <div className="flex flex-wrap gap-1 ml-5">
-                                  {epicTags.map(tag => tag && (
+                                  {epicTags.map(tag => (
                                     <TagBadge key={tag.id} tag={tag} />
                                   ))}
                                 </div>
@@ -175,11 +165,7 @@ export function Timeline({ project, onReorderEpics, onEditEpic, onEpicStatusChan
                                 width: `${width}%`,
                                 opacity: epic.status === 'No Iniciada' ? 0.5 : 1 
                               }}
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                onEditEpic(epic);
-                              }}
+                              onClick={() => onEditEpic(epic)}
                             >
                               <div className="absolute invisible group-hover:visible bg-slate-900 text-white text-xs rounded px-2 py-1 -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap">
                                 {formatShortDate(epic.startDate)} - {formatShortDate(epic.endDate)}
