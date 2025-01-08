@@ -10,10 +10,10 @@ interface EpicsManagerProps {
   project: Project;
   isOpen: boolean;
   onClose: () => void;
-  onEpicStatusChange: (epicName: string, newStatus: Epic['status']) => void;
-  onEpicUpdate: (epicName: string, updates: Partial<Epic>) => void;
+  onEpicStatusChange: (epicId: string, newStatus: Epic['status']) => void;
+  onEpicUpdate: (epicId: string, updates: Partial<Epic>) => void;
   onAddEpic: (epic: Epic) => void;
-  onDeleteEpic: (epicName: string) => void;
+  onDeleteEpic: (epicId: string) => void;
 }
 
 export function EpicsManager({
@@ -33,11 +33,13 @@ export function EpicsManager({
 
   const handleAddClick = () => {
     const newEpic: Epic = {
+      id: crypto.randomUUID(),
       name: `Nueva Épica ${project.epics.length + 1}`,
       startDate: format(new Date(), "d 'de' MMMM yyyy", { locale: es }),
       endDate: format(new Date(), "d 'de' MMMM yyyy", { locale: es }),
       status: 'No Iniciada',
-      tagIds: []
+      tagIds: [],
+      order: project.epics.length
     };
     setEditingEpic(newEpic);
     setIsAddingEpic(true);
@@ -48,11 +50,11 @@ export function EpicsManager({
     setIsAddingEpic(false);
   };
 
-  const handleEpicUpdate = (epicName: string, updates: Partial<Epic>) => {
-    if (isAddingEpic) {
-      onAddEpic({ ...editingEpic!, ...updates });
+  const handleEpicUpdate = (epicId: string, updates: Partial<Epic>) => {
+    if (isAddingEpic && editingEpic) {
+      onAddEpic({ ...editingEpic, ...updates });
     } else {
-      onEpicUpdate(epicName, updates);
+      onEpicUpdate(epicId, updates);
     }
     setEditingEpic(null);
     setIsAddingEpic(false);
@@ -64,7 +66,7 @@ export function EpicsManager({
 
   const confirmDelete = () => {
     if (epicToDelete) {
-      onDeleteEpic(epicToDelete.name);
+      onDeleteEpic(epicToDelete.id);
     }
     setEpicToDelete(null);
   };
@@ -92,7 +94,7 @@ export function EpicsManager({
         <div className="space-y-4">
           {project.epics.map((epic) => (
             <div
-              key={epic.name}
+              key={epic.id}
               className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all"
             >
               <div className="flex items-center justify-between">
@@ -108,7 +110,7 @@ export function EpicsManager({
                 <div className="flex items-center gap-2">
                   <select
                     value={epic.status}
-                    onChange={(e) => onEpicStatusChange(epic.name, e.target.value as Epic['status'])}
+                    onChange={(e) => onEpicStatusChange(epic.id, e.target.value as Epic['status'])}
                     className="text-sm border border-gray-300 rounded-md px-2 py-1"
                   >
                     <option value="No Iniciada">No Iniciada</option>
@@ -147,7 +149,7 @@ export function EpicsManager({
               setEditingEpic(null);
               setIsAddingEpic(false);
             }}
-            onUpdate={handleEpicUpdate}
+            onUpdate={(updates) => handleEpicUpdate(editingEpic.id, updates)}
             isNewEpic={isAddingEpic}
           />
         )}

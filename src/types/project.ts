@@ -20,6 +20,7 @@ export interface Epic {
   status: "No Iniciada" | "En Progreso" | "Completada" | "Atrasada";
   tagIds: string[];
   order: number;
+  project_id?: string;
 }
 
 export interface Project extends DbProject {

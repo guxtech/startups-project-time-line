@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { X } from 'lucide-react';
 import DatePicker from 'react-datepicker';
-import { parse, addMonths, isBefore, isAfter, startOfMonth, endOfMonth } from 'date-fns';
+import { format, parse, startOfMonth, endOfMonth, addMonths, isAfter, isBefore } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { Epic, Project } from '../types/project';
-import { parseProjectDate, formatProjectDate } from '../utils/dateUtils';
 import { TagPicker } from './TagPicker';
-import "react-datepicker/dist/react-datepicker.css";
+import { parseProjectDate, formatProjectDate } from '../utils/dateUtils';
 
 interface EpicEditorProps {
   epic: Epic;
@@ -73,7 +73,8 @@ export function EpicEditor({ epic, project, isOpen, onClose, onUpdate, isNewEpic
       startDate: formatProjectDate(startDate),
       endDate: formatProjectDate(endDate),
       status: epic.status,
-      tagIds: selectedTagIds
+      tagIds: selectedTagIds,
+      project_id: project.id
     };
 
     onUpdate(updates);
@@ -90,10 +91,7 @@ export function EpicEditor({ epic, project, isOpen, onClose, onUpdate, isNewEpic
             {isNewEpic ? 'Nueva Épica' : `Editar Épica: ${epic.name}`}
           </h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-            <span className="sr-only">Cerrar</span>
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X className="w-6 h-6" />
           </button>
         </div>
 
