@@ -68,16 +68,20 @@ export function useProjects() {
     updates: Partial<Project>
   ) => {
     try {
+      // Separar los datos del proyecto de las relaciones
+      const { epics, tags, ...projectUpdates } = updates;
+
+      // Actualizar el proyecto primero
       const updatedProject = await projectService.updateProject(
         projectId,
-        updates
+        projectUpdates
       );
 
-      // Si hay actualizaciones de epics, actualizarlos también
-      if (updates.epics) {
+      // Si hay actualizaciones de épicas, actualizarlas
+      if (epics) {
         await Promise.all(
-          updates.epics.map((epic) =>
-            epicService.updateEpic(epic.id, {
+          epics.map(async (epic) => {
+            const epicData = {
               name: epic.name,
               start_date: epic.startDate,
               end_date: epic.endDate,
@@ -85,8 +89,14 @@ export function useProjects() {
               tag_ids: epic.tagIds,
               order: epic.order,
               project_id: projectId,
-            })
-          )
+            };
+
+            try {
+              await epicService.updateEpic(epic.id, epicData);
+            } catch (error) {
+              console.error(`Error updating epic ${epic.id}:`, error);
+            }
+          })
         );
       }
 

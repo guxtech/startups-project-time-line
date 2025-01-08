@@ -1,4 +1,3 @@
-import React from 'react';
 import { Clock8, ListTodo, BarChart2, Briefcase, Settings, Download, ListPlus } from 'lucide-react';
 import type { Project } from '../types/project';
 import { HoursChart } from './HoursChart';
