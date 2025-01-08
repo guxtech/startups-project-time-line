@@ -21,8 +21,7 @@ export function ProjectSummary({ project, onOpenSettings, onOpenEpics }: Project
 
       const pdf = new jsPDF('l', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-
+      
       const summaryCanvas = await html2canvas(summaryElement, {
         scale: 1.5,
         backgroundColor: '#ffffff',
@@ -59,7 +58,7 @@ export function ProjectSummary({ project, onOpenSettings, onOpenEpics }: Project
         timelineImgHeight
       );
 
-      pdf.save(`${project.projectName}-reporte.pdf`);
+      pdf.save(`${project.project_name}-reporte.pdf`);
     } catch (error) {
       console.error('Error al exportar PDF:', error);
     }
@@ -69,7 +68,7 @@ export function ProjectSummary({ project, onOpenSettings, onOpenEpics }: Project
     <div id="project-summary" className="bg-white rounded-2xl shadow-sm border border-slate-100/50 p-6 transition-all duration-200">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
-          {project.projectName}
+          {project.project_name}
         </h1>
         <div className="flex gap-3">
           <button
@@ -103,7 +102,7 @@ export function ProjectSummary({ project, onOpenSettings, onOpenEpics }: Project
               <Clock8 className="w-6 h-6 text-blue-600" />
             </div>
             <p className="text-sm font-medium text-blue-600/90 mb-1">Horas Estimadas</p>
-            <p className="text-3xl font-bold text-blue-900">{project.totalEstimatedHours}h</p>
+            <p className="text-3xl font-bold text-blue-900">{project.total_estimated_hours}h</p>
           </div>
         </div>
 
@@ -113,7 +112,7 @@ export function ProjectSummary({ project, onOpenSettings, onOpenEpics }: Project
               <BarChart2 className="w-6 h-6 text-emerald-600" />
             </div>
             <p className="text-sm font-medium text-emerald-600/90 mb-1">Progreso</p>
-            <p className="text-3xl font-bold text-emerald-900">{project.progressStatus}%</p>
+            <p className="text-3xl font-bold text-emerald-900">{project.progress_status}%</p>
           </div>
         </div>
 
@@ -123,7 +122,7 @@ export function ProjectSummary({ project, onOpenSettings, onOpenEpics }: Project
               <ListTodo className="w-6 h-6 text-violet-600" />
             </div>
             <p className="text-sm font-medium text-violet-600/90 mb-1">Tareas Totales</p>
-            <p className="text-3xl font-bold text-violet-900">{project.totalTasks}</p>
+            <p className="text-3xl font-bold text-violet-900">{project.total_tasks}</p>
           </div>
         </div>
 
@@ -133,16 +132,16 @@ export function ProjectSummary({ project, onOpenSettings, onOpenEpics }: Project
               <Briefcase className="w-6 h-6 text-amber-600" />
             </div>
             <p className="text-sm font-medium text-amber-600/90 mb-1">Fase Actual</p>
-            <p className="text-2xl font-bold text-amber-900 leading-tight" title={project.currentPhase}>
-              {project.currentPhase}
+            <p className="text-2xl font-bold text-amber-900 leading-tight" title={project.current_phase}>
+              {project.current_phase}
             </p>
           </div>
         </div>
 
         <div className="bg-gradient-to-br from-slate-50 to-slate-50/30 rounded-2xl p-5 transition-all duration-200 hover:shadow-md hover:translate-y-[-2px]">
           <HoursChart 
-            consumedHours={project.totalConsumedHours} 
-            estimatedHours={project.totalEstimatedHours} 
+            consumedHours={project.total_consumed_hours} 
+            estimatedHours={project.total_estimated_hours} 
           />
         </div>
       </div>
