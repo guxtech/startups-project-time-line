@@ -11,7 +11,7 @@ import { useProjects } from '../hooks/useProjects';
 export function ProjectDashboard() {
   const { projectId } = useParams();
   const navigate = useNavigate();
-  const { projects, loading, error, updateProject } = useProjects();
+  const { projects, loading, error, updateProject, deleteEpic } = useProjects();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isEpicsManagerOpen, setIsEpicsManagerOpen] = useState(false);
   const [editingEpic, setEditingEpic] = useState<Epic | null>(null);
@@ -86,14 +86,13 @@ export function ProjectDashboard() {
     updateProject(currentProject.id, updatedProject);
   };
 
-  const handleDeleteEpic = (epicId: string) => {
+  const handleDeleteEpic = async (epicId: string) => {
     if (!currentProject) return;
-
-    const updatedProject = {
-      ...currentProject,
-      epics: currentProject.epics.filter(epic => epic.id !== epicId)
-    };
-    updateProject(currentProject.id, updatedProject);
+    try {
+      await deleteEpic(currentProject.id, epicId);
+    } catch (error) {
+      console.error('Error al eliminar épica:', error);
+    }
   };
 
   const handleReorderEpics = (reorderedEpics: Epic[]) => {

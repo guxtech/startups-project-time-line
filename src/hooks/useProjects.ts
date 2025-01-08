@@ -69,7 +69,7 @@ export function useProjects() {
   ) => {
     try {
       // Separar los datos del proyecto de las relaciones
-      const { epics, tags, ...projectUpdates } = updates;
+      const { epics, ...projectUpdates } = updates;
 
       // Actualizar el proyecto primero
       const updatedProject = await projectService.updateProject(
@@ -83,6 +83,17 @@ export function useProjects() {
         const currentEpics = await epicService.getProjectEpics(projectId);
         const currentEpicIds = new Set(currentEpics.map((epic) => epic.id));
 
+        // Identificar épicas eliminadas
+        const deletedEpicIds = currentEpics
+          .filter((epic) => !epics.some((e) => e.id === epic.id))
+          .map((epic) => epic.id);
+
+        // Eliminar épicas que ya no están en la lista
+        await Promise.all(
+          deletedEpicIds.map((epicId) => epicService.deleteEpic(epicId))
+        );
+
+        // Actualizar o crear épicas
         await Promise.all(
           epics.map(async (epic) => {
             const epicData = {
@@ -144,6 +155,28 @@ export function useProjects() {
     }
   };
 
+  const deleteEpic = async (projectId: string, epicId: string) => {
+    try {
+      await epicService.deleteEpic(epicId);
+
+      // Actualizar el estado local
+      setProjects((prev) =>
+        prev.map((project) => {
+          if (project.id === projectId) {
+            return {
+              ...project,
+              epics: project.epics.filter((epic) => epic.id !== epicId),
+            };
+          }
+          return project;
+        })
+      );
+    } catch (err) {
+      setError("Error al eliminar la épica");
+      throw err;
+    }
+  };
+
   return {
     projects,
     loading,
@@ -151,5 +184,6 @@ export function useProjects() {
     createProject,
     updateProject,
     deleteProject,
+    deleteEpic,
   };
 }
