@@ -77,7 +77,11 @@ export function ProjectDashboard() {
 
     const updatedProject = {
       ...currentProject,
-      epics: [...currentProject.epics, { ...newEpic, order: currentProject.epics.length }]
+      epics: [...currentProject.epics, { 
+        ...newEpic,
+        order: currentProject.epics.length,
+        project_id: currentProject.id
+      }]
     };
     updateProject(currentProject.id, updatedProject);
   };

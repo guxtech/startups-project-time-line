@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import DatePicker from 'react-datepicker';
-import { format, parse, startOfMonth, endOfMonth, addMonths, isAfter, isBefore } from 'date-fns';
+import {  parse, startOfMonth, endOfMonth, addMonths, isAfter, isBefore } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { Epic, Project } from '../types/project';
 import { TagPicker } from './TagPicker';

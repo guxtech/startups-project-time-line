@@ -79,6 +79,10 @@ export function useProjects() {
 
       // Si hay actualizaciones de épicas, actualizarlas
       if (epics) {
+        // Obtener las épicas actuales del proyecto
+        const currentEpics = await epicService.getProjectEpics(projectId);
+        const currentEpicIds = new Set(currentEpics.map((epic) => epic.id));
+
         await Promise.all(
           epics.map(async (epic) => {
             const epicData = {
@@ -92,9 +96,16 @@ export function useProjects() {
             };
 
             try {
-              await epicService.updateEpic(epic.id, epicData);
+              // Solo actualizar si la épica ya existe en la base de datos
+              if (currentEpicIds.has(epic.id)) {
+                await epicService.updateEpic(epic.id, epicData);
+              } else {
+                // Si es una nueva épica (no existe en la base de datos), crearla
+                await epicService.createEpic(epicData);
+              }
             } catch (error) {
-              console.error(`Error updating epic ${epic.id}:`, error);
+              console.error(`Error updating/creating epic:`, error);
+              throw error;
             }
           })
         );

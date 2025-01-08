@@ -11,7 +11,7 @@ export const epicService = {
       .from("epics")
       .select("*")
       .eq("project_id", projectId)
-      .order("created_at", { ascending: true });
+      .order("order", { ascending: true });
 
     if (error) throw error;
     return data as Epic[];
@@ -20,11 +20,22 @@ export const epicService = {
   async createEpic(epic: EpicInsert) {
     const { data, error } = await supabase
       .from("epics")
-      .insert(epic)
+      .insert({
+        name: epic.name,
+        start_date: epic.start_date,
+        end_date: epic.end_date,
+        status: epic.status,
+        tag_ids: epic.tag_ids,
+        order: epic.order,
+        project_id: epic.project_id,
+      })
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error("Error creating epic:", error);
+      throw error;
+    }
     return data as Epic;
   },
 

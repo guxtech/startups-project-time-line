@@ -33,13 +33,14 @@ export function EpicsManager({
 
   const handleAddClick = () => {
     const newEpic: Epic = {
-      id: crypto.randomUUID(),
+      id: '',
       name: `Nueva Épica ${project.epics.length + 1}`,
       startDate: format(new Date(), "d 'de' MMMM yyyy", { locale: es }),
       endDate: format(new Date(), "d 'de' MMMM yyyy", { locale: es }),
       status: 'No Iniciada',
       tagIds: [],
-      order: project.epics.length
+      order: project.epics.length,
+      project_id: project.id
     };
     setEditingEpic(newEpic);
     setIsAddingEpic(true);
@@ -52,7 +53,13 @@ export function EpicsManager({
 
   const handleEpicUpdate = (epicId: string, updates: Partial<Epic>) => {
     if (isAddingEpic && editingEpic) {
-      onAddEpic({ ...editingEpic, ...updates });
+      const newEpic: Epic = {
+        ...editingEpic,
+        ...updates,
+        project_id: project.id,
+        order: project.epics.length
+      };
+      onAddEpic(newEpic);
     } else {
       onEpicUpdate(epicId, updates);
     }
